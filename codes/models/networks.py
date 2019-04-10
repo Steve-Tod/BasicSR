@@ -118,6 +118,25 @@ def define_D(opt):
         netD = arch.Discriminator_VGG_128(in_nc=opt_net['in_nc'], base_nf=opt_net['nf'], \
             norm_type=opt_net['norm_type'], mode=opt_net['mode'], act_type=opt_net['act_type'])
 
+    elif which_model == 'discriminator_vgg_128_multi': 
+        netD = {}
+        net_list = {'128': arch.Discriminator_VGG_128,
+                    '96': arch.Discriminator_VGG_96,
+                    '64': arch.Discriminator_VGG_64,
+                    '32': arch.Discriminator_VGG_32,
+                    '16': arch.Discriminator_VGG_16}
+        for k in opt['train']['lr_D'].keys():
+            netD[k] = net_list[k](in_nc=opt_net['in_nc'], base_nf=opt_net['nf'], \
+                    norm_type=opt_net['norm_type'], mode=opt_net['mode'], act_type=opt_net['act_type'])
+        '''
+        netD['128'] = arch.Discriminator_VGG_128(in_nc=opt_net['in_nc'], base_nf=opt_net['nf'], \
+            norm_type=opt_net['norm_type'], mode=opt_net['mode'], act_type=opt_net['act_type'])
+        netD['64'] = arch.Discriminator_VGG_64(in_nc=opt_net['in_nc'], base_nf=opt_net['nf'], 
+            norm_type=opt_net['norm_type'], mode=opt_net['mode'], act_type=opt_net['act_type']) 
+        netD['32'] = arch.Discriminator_VGG_32(in_nc=opt_net['in_nc'], base_nf=opt_net['nf'], 
+            norm_type=opt_net['norm_type'], mode=opt_net['mode'], act_type=opt_net['act_type']) 
+        '''
+
     elif which_model == 'dis_acd':  # sft-gan, Auxiliary Classifier Discriminator
         netD = sft_arch.ACD_VGG_BN_96()
 
@@ -132,9 +151,18 @@ def define_D(opt):
     else:
         raise NotImplementedError('Discriminator model [{:s}] not recognized'.format(which_model))
 
-    init_weights(netD, init_type='kaiming', scale=1)
+    if which_model == 'discriminator_vgg_128_multi':
+        for k in netD.keys():
+            init_weights(netD[k], init_type='kaiming', scale=1)
+    else:
+        init_weights(netD, init_type='kaiming', scale=1)
+
     if gpu_ids:
-        netD = nn.DataParallel(netD)
+        if which_model == 'discriminator_vgg_128_multi':
+            for k in netD.keys():
+                netD[k] = nn.DataParallel(netD[k])
+        else:
+            netD = nn.DataParallel(netD)
     return netD
 
 
